@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Name Submission</title>
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <h1>Add Names</h1>
+
+        {% if auth_success %}
+            <div class="alert alert-success" role="alert">
+                Auth code validated successfully! You can now add names.
+            </div>
+        {% endif %}
+
+        <form method="POST" class="mt-4">
+            <div class="mb-3">
+                <label for="user_name" class="form-label">Your Name:</label>
+                <input type="text" class="form-control" id="user_name" name="user_name" required>
+            </div>
+            <div class="mb-3">
+                <label for="name_1" class="form-label">Name 1:</label>
+                <input type="text" class="form-control" id="name_1" name="name_1" required>
+            </div>
+            <div class="mb-3">
+                <label for="name_2" class="form-label">Name 2:</label>
+                <input type="text" class="form-control" id="name_2" name="name_2" required>
+            </div>
+            <div class="mb-3">
+                <label for="name_3" class="form-label">Name 3:</label>
+                <input type="text" class="form-control" id="name_3" name="name_3" required>
+            </div>
+
+             <div class="mb-3">
+                <label for="date_added" class="form-label">Date Added:</label>
+                <input type="date" id="date_added" name="date_added" class="form-control" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit Names</button>
+        </form>
+    </div>
+</body>
+</html>
