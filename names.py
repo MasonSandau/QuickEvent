@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import csv
-#from datetime import datetime
+
+# from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Secret key for session management
@@ -10,6 +11,7 @@ CSV_FILE = 'names.csv'
 # Simple admin credentials (in practice, store this securely)
 ADMIN_USERNAME = 'admin'
 ADMIN_PASSWORD = 'password'
+
 
 # Landing page
 @app.route('/', methods=['GET', 'POST'])
@@ -48,13 +50,16 @@ def index():
 
     return render_template('index.html', auth_success=auth_success)
 
+
 @app.route('/success/<user>')
 def success(user):
     return f'Thank you, {user}, for adding the names!'
 
+
 @app.route('/invalid/<user>')
 def invalid(user):
     return f'Sorry {user}, your auth code is not valid.'
+
 
 # Login page
 @app.route('/login', methods=['GET', 'POST'])
@@ -72,6 +77,7 @@ def login():
             return redirect(url_for('login'))
 
     return render_template('login.html')
+
 
 # Admin panel to view, delete, and filter names by date (protected by login)
 @app.route('/admin', methods=['GET', 'POST'])
@@ -96,6 +102,7 @@ def view_admin():
 
     return render_template('admin_panel.html', data=data, dates=sorted(dates), selected_date=selected_date)
 
+
 # Route to delete a specific name entry by index
 @app.route('/delete_name/<int:row_index>', methods=['POST'])
 def delete_name(row_index):
@@ -119,11 +126,23 @@ def delete_name(row_index):
 
     return redirect(url_for('view_admin'))
 
+
 # Logout function
 @app.route('/logout')
 def logout():
     session.pop('logged_in', None)
     return redirect(url_for('login'))
 
+
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+@app.route('/security')
+def security():
+    def security(securityNum=None):
+        if not session.get('logged_in'):  # Check if the admin is logged in
+            return redirect(url_for('login'))
+
+    # select how many sec members you need
+    # random gen of active member who have not done sec yet this semester
