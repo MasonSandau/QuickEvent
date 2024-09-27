@@ -1,60 +1,113 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import csv
-#import hashlib # to be implimented
-#from datetime import datetime
+import os
+from datetime import datetime
 
 app = Flask(__name__)
 
-app.secret_key = 'cookie_secret_key_salt_eoiuhgwhouwgeouhi'  # Secret key for session management
+app.secret_key = 'cookie_secret_key_salt_eoiuhgwhouwgeouhi'
 CSV_FILE = 'names.csv'
+LOG_FILE = 'admin_logs.csv'
+LIMITED_USERS_FILE = 'limited_users.csv'
 
-# Simple admin credentials (in practice, store this securely using hash stuff...)
 ADMIN_USERNAME = 'admin'
 ADMIN_PASSWORD = 'password'
-auth_code_plain = ''
+
+# Ensure the log file exists before reading
+def ensure_log_file_exists():
+    if not os.path.exists(LOG_FILE):
+        # Create the file and write the header if necessary
+        with open(LOG_FILE, 'w', newline='') as logfile:
+            writer = csv.writer(logfile)
+            writer.writerow(['Timestamp', 'Admin User', 'Action', 'Details'])
+
+
+# Utility function to log admin actions
+def log_admin_action(action, details=""):
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    admin_user = session.get('logged_in')
+
+    # Append the log entry to the CSV file
+    with open(LOG_FILE, 'a', newline='') as logfile:
+        writer = csv.writer(logfile)
+        writer.writerow([timestamp, admin_user, action, details])
+
+def is_user_limited(user_name):
+    if not os.path.exists(LIMITED_USERS_FILE):
+        return False
+    with open(LIMITED_USERS_FILE, 'r') as file:
+        return user_name in [line.strip() for line in file.readlines()]
+
+def add_limited_user(user_name):
+    with open(LIMITED_USERS_FILE, 'a') as file:
+        file.write(f'{user_name}\n')
+
+def remove_limited_user(user_name):
+    if not os.path.exists(LIMITED_USERS_FILE):
+        return
+    with open(LIMITED_USERS_FILE, 'r') as file:
+        users = file.readlines()
+    with open(LIMITED_USERS_FILE, 'w') as file:
+        file.writelines([user for user in users if user.strip() != user_name])
+
+
+@app.route('/admin_debug')
+def admin_debug():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+
+    ensure_log_file_exists()  # Make sure log file exists
+
+    logs = []
+    try:
+        with open(LOG_FILE, 'r') as logfile:
+            reader = csv.reader(logfile)
+            logs = list(reader)
+            if not logs:  # Check if logs are empty
+                logs = [['No logs available', '', '', '']]  # Placeholder row
+    except Exception as e:
+        print(f"Error reading log file: {e}")
+
+
+    session_data = dict(session)
+
+    return render_template('admin_debug.html', logs=logs, session_data=session_data)
+
+
 
 # Landing page
 @app.route('/', methods=['GET', 'POST'])
 def landing():
-    #if session['auth_success']==True:
-    #    return redirect(url_for('index'))
     if request.method == 'POST':
         auth_code = request.form['auth_code']
-        #in_auth_hash = hashlib.sha256(auth_code).hexdigest().encode('utf-8').lower_case()
-        if auth_code == "salt":  # Check if the auth code is correct
-            session['auth_success'] = True  # Set flag for successful authentication
-            return redirect(url_for('index'))  # Redirect to the name-adding page
+        if auth_code == "salt":
+            session['auth_success'] = True
+            return redirect(url_for('index'))
         else:
-            flash('Invalid auth code. Please try again.')  # Flash a message for invalid auth code
+            flash('Invalid auth code. Please try again.')
     return render_template('landing.html')
-
-
 
 
 # Home page with form submission
 @app.route('/index', methods=['GET', 'POST'])
 def index():
-    # Check if the user is authenticated
     auth_success = session.get('auth_success')
+    user_name = request.form.get('user_name')
 
-    # Check if the user is limited (i.e., already submitted names)
-    if session.get('limited', False):
+    if user_name and is_user_limited(user_name):
         return redirect(url_for('already_submitted'))
 
     if request.method == 'POST' and auth_success:
-        user_name = request.form['user_name']
         name_1 = request.form['name_1']
         name_2 = request.form['name_2']
         name_3 = request.form['name_3']
         date_added = request.form['date_added']
 
-        # Write to CSV
         with open(CSV_FILE, 'a', newline='') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow([date_added, user_name, name_1, name_2, name_3])
 
-        # Mark the user as limited (prevent them from submitting again)
-        session['limited'] = True
+        add_limited_user(user_name)
 
         return redirect(url_for('success', user=user_name))
 
@@ -70,15 +123,7 @@ def already_submitted():
 def success(user):
     return f'Thank you, {user}, for adding the names!'
 
-@app.route('/invalid/<user>')
-def invalid(user):
-    return f'Sorry {user}, your auth code is not valid.'
 
-@app.route('/limited')
-def limited():
-    return 'Sorry, it seems either you are not authenticated or you have been limited. Please contact an admin if you belive this is an error'
-
-# Login page
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if session.get('logged_in'):
@@ -86,43 +131,18 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-
-        # Check if credentials are correct
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             session['logged_in'] = True
+            log_admin_action('Login', f'Admin: {username}')
             return redirect(url_for('view_admin'))
         else:
             flash('Invalid credentials. Please try again.')
-            return redirect(url_for('login'))
-
     return render_template('login.html')
+
 
 # Admin panel to view, delete, and filter names by date (protected by login)
 @app.route('/admin', methods=['GET', 'POST'])
 def view_admin():
-    if not session.get('logged_in'):  # Check if the admin is logged in
-        return redirect(url_for('login'))
-
-    selected_date = None
-    data = []
-    dates = set()
-
-    # Read the CSV data
-    with open(CSV_FILE, 'r') as csvfile:
-        reader = csv.reader(csvfile)
-        for row in reader:
-            dates.add(row[0])  # Collect unique dates
-            data.append(row)
-
-    if request.method == 'POST':
-        selected_date = request.form['selected_date']
-        data = [row for row in data if row[0] == selected_date]  # Filter by selected date
-
-    return render_template('admin_panel.html', data=data, dates=sorted(dates), selected_date=selected_date)
-
-@app.route('/admin_users', methods=['GET', 'POST'])
-def admin_users():
-
     if not session.get('logged_in'):
         return redirect(url_for('login'))
 
@@ -130,35 +150,48 @@ def admin_users():
     data = []
     dates = set()
 
-    # Read the CSV data
     with open(CSV_FILE, 'r') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
-            dates.add(row[0])  # Collect unique dates
+            dates.add(row[0])
             data.append(row)
 
-    return render_template('admin_users.html', data=data, dates=sorted(dates), selected_date=selected_date)
+    if request.method == 'POST':
+        selected_date = request.form['selected_date']
+        data = [row for row in data if row[0] == selected_date]
+
+    return render_template('admin_panel.html', data=data, dates=sorted(dates), selected_date=selected_date)
 
 
+# Admin page for managing rate-limited users
+@app.route('/admin_users', methods=['GET', 'POST'])
+def admin_users():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+
+    limited_users = []
+    if os.path.exists(LIMITED_USERS_FILE):
+        with open(LIMITED_USERS_FILE, 'r') as file:
+            limited_users = [user.strip() for user in file.readlines()]
+
+    return render_template('admin_users.html', limited_users=limited_users)
 
 
 # Route to delete a specific name entry by index
 @app.route('/delete_name/<int:row_index>', methods=['POST'])
 def delete_name(row_index):
-    if not session.get('logged_in'):  # Check if the admin is logged in
+    if not session.get('logged_in'):
         return redirect(url_for('login'))
 
     data = []
-
-    # Read all rows from CSV
     with open(CSV_FILE, 'r') as csvfile:
         reader = csv.reader(csvfile)
         data = list(reader)
 
     if 0 <= row_index < len(data):
-        data.pop(row_index)  # Remove the row with the specified index
+        row = data.pop(row_index)
+        log_admin_action('Delete Name', f'User: {row[1]}, Names: {row[2]}, {row[3]}, {row[4]}')
 
-    # Write the updated data back to the CSV
     with open(CSV_FILE, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerows(data)
@@ -166,20 +199,17 @@ def delete_name(row_index):
     return redirect(url_for('view_admin'))
 
 
-
-# delimit user interacrations:
+# Delimit user interactions
 @app.route('/delimit_user/<string:user_name>', methods=['POST'])
 def delimit_user(user_name):
-    if not session.get('logged_in'):  # Check if the admin is logged in
+    if not session.get('logged_in'):
         return redirect(url_for('login'))
 
-    # In a real application, you would keep track of users more persistently (e.g., in a database)
-    # Here we assume we reset the "limited" status for the given user
-    # Assuming session stores per user can be done differently in a larger system.
-    session.pop('limited', None)
-
+    remove_limited_user(user_name)
+    log_admin_action('Delimit User', f'User: {user_name}')
     flash(f'User {user_name} has been delimited.')
     return redirect(url_for('view_admin'))
+
 
 
 
@@ -188,7 +218,9 @@ def delimit_user(user_name):
 @app.route('/logout', methods=['POST'])
 def logout():
     session['logged_in'] = False
+    log_admin_action('Logout', 'Admin logged out')
     return redirect(url_for('login'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
