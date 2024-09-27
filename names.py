@@ -136,20 +136,26 @@ def already_submitted():
 def success(user):
     return f'Thank you, {user}, for adding the names!'
 
-
+#login page for admin panel
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    #pre check if they're already logged in it skips this page
     if session.get('logged_in'):
         return redirect(url_for('view_admin'))
+    #checks if html submit button is pressed for a post request
     if request.method == 'POST':
+        #gets username/password from html form
         username = request.form['username']
         password = request.form['password']
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            #changes logged_in value to true if successful, and logs that action
             session['logged_in'] = True
             log_admin_action('Login', f'Admin: {username}')
             return redirect(url_for('view_admin'))
         else:
+            #flashes html invlaid cred's
             flash('Invalid credentials. Please try again.')
+    #renders login.html
     return render_template('login.html')
 
 
@@ -170,7 +176,9 @@ def view_admin():
             data.append(row)
 
     if request.method == 'POST':
+        #filter data by date
         selected_date = request.form['selected_date']
+        #pulled from some website i forgot, but basically in rows for each row with data if the first input is equal to the currently selected date.
         data = [row for row in data if row[0] == selected_date]
 
     return render_template('admin_panel.html', data=data, dates=sorted(dates), selected_date=selected_date)
@@ -191,11 +199,14 @@ def admin_users():
 
 
 # Route to delete a specific name entry by index
+# Delete name using url as index input
 @app.route('/delete_name/<int:row_index>', methods=['POST'])
 def delete_name(row_index):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-
+        
+    #just basic row data and popping based on csv_file...
+    
     data = []
     with open(CSV_FILE, 'r') as csvfile:
         reader = csv.reader(csvfile)
@@ -217,7 +228,8 @@ def delete_name(row_index):
 def delimit_user(user_name):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-
+        
+    #just general delimit functions defined above
     remove_limited_user(user_name)
     log_admin_action('Delimit User', f'User: {user_name}')
     flash(f'User {user_name} has been delimited.')
@@ -230,6 +242,7 @@ def delimit_user(user_name):
 # Logout function
 @app.route('/logout', methods=['POST'])
 def logout():
+    #suppperrrr basic logged_in false functoin and logging, along with redirect
     session['logged_in'] = False
     log_admin_action('Logout', 'Admin logged out')
     return redirect(url_for('login'))
