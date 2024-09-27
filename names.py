@@ -5,33 +5,42 @@ from datetime import datetime
 
 app = Flask(__name__)
 
+#a secret key to help authenticate user cookies
 app.secret_key = 'cookie_secret_key_salt_eoiuhgwhouwgeouhi'
+
+# generl files for names, logs, and users in comma seperate fashion for later expansion
 CSV_FILE = 'names.csv'
 LOG_FILE = 'admin_logs.csv'
 LIMITED_USERS_FILE = 'limited_users.csv'
 
+#defualt admin username/password, to be hashed and changed later on
 ADMIN_USERNAME = 'admin'
 ADMIN_PASSWORD = 'password'
 
 # Ensure the log file exists before reading
 def ensure_log_file_exists():
+    #Chekcks file existance
     if not os.path.exists(LOG_FILE):
-        # Create the file and write the header if necessary
+        # Creates file if not LOG_FILE
         with open(LOG_FILE, 'w', newline='') as logfile:
             writer = csv.writer(logfile)
+            #Default data if file is not working
             writer.writerow(['Timestamp', 'Admin User', 'Action', 'Details'])
 
 
-# Utility function to log admin actions
+# Log admin actions that can be used in any function
+# logs action and then extra details as an input
 def log_admin_action(action, details=""):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    #Debug data fhecking if admin is logged in
     admin_user = session.get('logged_in')
 
-    # Append the log entry to the CSV file
+    # Python writing data
     with open(LOG_FILE, 'a', newline='') as logfile:
         writer = csv.writer(logfile)
         writer.writerow([timestamp, admin_user, action, details])
 
+#general limit functions, using limited users file to keep track and built in python file reading to handle the data
 def is_user_limited(user_name):
     if not os.path.exists(LIMITED_USERS_FILE):
         return False
@@ -50,7 +59,8 @@ def remove_limited_user(user_name):
     with open(LIMITED_USERS_FILE, 'w') as file:
         file.writelines([user for user in users if user.strip() != user_name])
 
-
+#page for admin debug found at url.com/admin_debug
+#must be "logged_in" to access the page otherwise it redirects
 @app.route('/admin_debug')
 def admin_debug():
     if not session.get('logged_in'):
@@ -59,6 +69,8 @@ def admin_debug():
     ensure_log_file_exists()  # Make sure log file exists
 
     logs = []
+    #reads log file and checks logs available
+    #along with error handling cuz idk python throws erros ig
     try:
         with open(LOG_FILE, 'r') as logfile:
             reader = csv.reader(logfile)
@@ -75,7 +87,7 @@ def admin_debug():
 
 
 
-# Landing page
+# Landing page/main page, contains auth code input, redirect to forms page, 
 @app.route('/', methods=['GET', 'POST'])
 def landing():
     if request.method == 'POST':
@@ -96,29 +108,30 @@ def index():
 
     if user_name and is_user_limited(user_name):
         return redirect(url_for('already_submitted'))
-
+    #if the users pushes "submit button" in html which sends a post request handled by python flask backend
     if request.method == 'POST' and auth_success:
         name_1 = request.form['name_1']
         name_2 = request.form['name_2']
         name_3 = request.form['name_3']
         date_added = request.form['date_added']
-
+        #appends data to names.csv
         with open(CSV_FILE, 'a', newline='') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow([date_added, user_name, name_1, name_2, name_3])
-
+        #makes user limited
         add_limited_user(user_name)
-
+        #sends to success page
         return redirect(url_for('success', user=user_name))
 
     return render_template('index.html', auth_success=auth_success)
 
 
+#super basic submitted page if the user is limited
 @app.route('/already_submitted')
 def already_submitted():
     return "You've already submitted names. Please contact the admin if this is a mistake."
 
-
+#super basic success page when names are successfully added
 @app.route('/success/<user>')
 def success(user):
     return f'Thank you, {user}, for adding the names!'
