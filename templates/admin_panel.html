@@ -10,10 +10,19 @@
     <div class="container mt-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>Admin Panel</h1>
-            <form action="{{ url_for('logout') }}" method="POST" style="display:inline;">
-                <button type="submit" class="btn btn-secondary">Logout</button>
-            </form>
+            <div>
+                <!-- Buttons to go to the diff admin pages page -->
+                <a href="{{ url_for('index') }}" class="btn btn-info me-2">Form</a>
 
+                <a href="{{ url_for('admin_users') }}" class="btn btn-info me-2">Manage Users</a>
+
+                <a href="{{ url_for('admin_debug') }}" class="btn btn-info me-2">Debug/logs</a>
+
+                <!-- Logout button -->
+                <form action="{{ url_for('logout') }}" method="POST" style="display:inline;">
+                    <button type="submit" class="btn btn-secondary">Logout</button>
+                </form>
+            </div>
         </div>
 
         <!-- Add features above list view here! -->
@@ -57,7 +66,7 @@
         <table class="table table-striped">
             <thead>
                 <tr>
-                    <th>Date Added</th>
+                    <th>Date requested:</th>
                     <th>User Name</th>
                     <th>Name 1</th>
                     <th>Name 2</th>
