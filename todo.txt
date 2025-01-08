@@ -1,0 +1,10 @@
+Make: 1. add names 2. create list 3. door users 4. check in functionality
+
+index:
+- links to all pages, admin panel
+
+Add names: 
+- Use generated token to verify is an active and can add names
+- have the ability to add names so people can add 1,2, or 3, and have the ability to request more names if wanted (admin can confirm or deny requested names)
+- keep time stamps, who added the person, and what day they are requesting for 
+- keep cookies to track who has uploaded names already for that time...
