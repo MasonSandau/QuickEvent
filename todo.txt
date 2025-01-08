@@ -4,7 +4,27 @@ index:
 - links to all pages, admin panel
 
 Add names: 
-- Use generated token to verify is an active and can add names
+- use generated token to verify is an active and can add names (change token every time)
 - have the ability to add names so people can add 1,2, or 3, and have the ability to request more names if wanted (admin can confirm or deny requested names)
 - keep time stamps, who added the person, and what day they are requesting for 
 - keep cookies to track who has uploaded names already for that time...
+
+Create list/admin panel:
+- ability to cap a list so no one can upload names if the list is at max (including or excluding requested names)
+- keep all first/last names for list at all times
+- create/generate txt/json list of names for easy parsing (activeDB...?)
+- delete names/reset the entire page
+- generate active token
+- generate webpages ect...
+
+door users:
+- ability to see names on the list along with color coding for checked-in/not-checked-in/added-at-door/ect...
+- add names to list if need be and edit the list on server
+- manually check in users if name is mispelled or can't find themselves...
+
+!!check in!!:
+- new webpage/url for each "function"
+- prompted only for first and last name
+- ability to "check in", once checked in they are no longer able to check in after...
+- homepage to inputting first/last name, then landing page with their unique token and function token and the ability to at the door verify that they have checked in
+- payment verification...? 
