@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Active Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4">
+        <h1 class="text-2xl font-bold mb-6">Active Dashboard</h1>
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-semibold mb-4">Invite Attendees</h2>
+            <form action="/invite_attendees" method="POST">
+                <div class="mb-4">
+                    <label class="block text-gray-700">Event ID</label>
+                    <input type="text" name="event_id" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700">Active Name</label>
+                    <input type="text" name="active_name" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700">Attendee Names</label>
+                    <input type="text" name="attendee_name" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <button type="button" class="mt-2 bg-blue-500 text-white py-1 px-3 rounded-lg hover:bg-blue-600" onclick="addAttendeeField()">Add Another</button>
+                </div>
+                <div id="attendeeFields"></div>
+                <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600">Invite Attendees</button>
+            </form>
+        </div>
+    </div>
+    <script>
+        function addAttendeeField() {
+            const container = document.getElementById('attendeeFields');
+            const newField = document.createElement('div');
+            newField.classList.add('mb-4');
+            newField.innerHTML = `
+                <label class="block text-gray-700">Attendee Name</label>
+                <input type="text" name="attendee_name" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+            `;
+            container.appendChild(newField);
+        }
+    </script>
+</body>
+</html>

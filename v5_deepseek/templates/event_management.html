@@ -1,0 +1,42 @@
+<!-- events.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4">
+        <h1 class="text-2xl font-bold mb-6">Existing Events</h1>
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <table class="w-full">
+                <thead>
+                    <tr>
+                        <th class="text-left py-2">Event Name</th>
+                        <th class="text-left py-2">Event Date</th>
+                        <th class="text-left py-2">Theme</th>
+                        <th class="text-left py-2">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in events %}
+                    <tr class="border-t">
+                        <td class="py-2">{{ event.event_name }}</td>
+                        <td class="py-2">{{ event.event_date }}</td>
+                        <td class="py-2">{{ event.theme }}</td>
+                        <td class="py-2">
+                            <a href="/event_management/{{ event.event_id }}" class="text-blue-500 hover:text-blue-700">Manage Event</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-6">
+            <a href="/dashboard" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Back to Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Scanner</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-96 text-center">
+        <h1 class="text-2xl font-bold mb-6">QR Scanner</h1>
+        <div id="scanner-container" class="mb-4">
+            <video id="qr-video" width="100%" autoplay></video>
+        </div>
+        <div id="result" class="hidden">
+            <p id="result-message" class="text-lg font-semibold mb-4"></p>
+            <button id="scan-again" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Scan Again</button>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('qr-video');
+        const resultContainer = document.getElementById('result');
+        const resultMessage = document.getElementById('result-message');
+        const scanAgainButton = document.getElementById('scan-again');
+
+        // Access the camera
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(stream => {
+                video.srcObject = stream;
+                video.play();
+                requestAnimationFrame(scanQR);
+            })
+            .catch(err => {
+                console.error('Error accessing camera:', err);
+                resultMessage.textContent = 'Error accessing camera. Please allow camera access.';
+                resultContainer.classList.remove('hidden');
+            });
+
+        // Scan QR code
+        function scanQR() {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+            if (code) {
+                // Send QR code data to the backend for validation
+                fetch('/validate_qr', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ qr_data: code.data }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'valid') {
+                        resultMessage.textContent = `Valid QR Code: ${data.attendee_name}`;
+                    } else {
+                        resultMessage.textContent = 'Invalid QR Code';
+                    }
+                    resultContainer.classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Error validating QR code:', error);
+                    resultMessage.textContent = 'Error validating QR code. Please try again.';
+                    resultContainer.classList.remove('hidden');
+                });
+            } else {
+                requestAnimationFrame(scanQR);
+            }
+        }
+
+        // Reset the scanner
+        scanAgainButton.addEventListener('click', () => {
+            resultContainer.classList.add('hidden');
+            requestAnimationFrame(scanQR);
+        });
+    </script>
+</body>
+</html>
