@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Scanner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f0f0; /* Default background color */
+            transition: background-color 0.5s ease; /* Smooth transition for background color */
+        }
+        #qr-reader {
+            width: 90%;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        #qr-reader-results {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 90%;
+            max-width: 500px;
+            word-wrap: break-word;
+        }
+        #return-to-scanner {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none; /* Hidden by default */
+        }
+        #return-to-scanner:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>QR Code Scanner</h1>
+    <div id="qr-reader"></div>
+    <div id="qr-reader-results"></div>
+    <button id="return-to-scanner">Return to Scanner</button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.4/html5-qrcode.min.js"></script>
+    <script>
+        let html5QrcodeScanner;
+        let shouldStopScanning = false;
+
+        function onScanSuccess(decodedText, decodedResult) {
+            if (shouldStopScanning) return; // Stop further scanning if a valid QR code has been detected
+
+            console.log(`Scan result: ${decodedText}`, decodedResult);
+
+            // Send the QR code data to the server for validation
+            fetch('/validate_qr', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ qr_data: decodedText }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Display the results
+                document.getElementById('qr-reader-results').innerText = JSON.stringify(data, null, 2);
+
+                // Change the background color based on validation
+                if (data.status === 'valid') {
+                    document.body.style.backgroundColor = '#d4edda'; // Light green for valid
+                } else {
+                    document.body.style.backgroundColor = '#f8d7da'; // Light red for invalid
+                }
+
+                if (data.stop_scanning) {
+                    shouldStopScanning = true; // Set the flag to stop further scanning
+                    html5QrcodeScanner.clear().then(() => {
+                        console.log("QR Code scanning stopped.");
+                        // Show the "Return to Scanner" button
+                        document.getElementById('return-to-scanner').style.display = 'block';
+                    }).catch(err => {
+                        console.error("Failed to stop scanning:", err);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function startScanner() {
+            shouldStopScanning = false;
+            document.getElementById('qr-reader-results').innerText = ''; // Clear previous results
+            document.getElementById('return-to-scanner').style.display = 'none'; // Hide the button
+            document.body.style.backgroundColor = '#f0f0f0'; // Reset background color
+
+            html5QrcodeScanner = new Html5QrcodeScanner(
+                "qr-reader", { fps: 10, qrbox: 250 });
+            html5QrcodeScanner.render(onScanSuccess);
+        }
+
+        // Start the scanner when the page loads
+        startScanner();
+
+        // Add event listener for the "Return to Scanner" button
+        document.getElementById('return-to-scanner').addEventListener('click', () => {
+            startScanner();
+        });
+    </script>
+</body>
+</html>
