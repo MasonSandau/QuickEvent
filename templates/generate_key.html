@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Admin Key</title>
+</head>
+<body>
+    <h1>Generate Admin Key</h1>
+    <form action="/generate_admin_key" method="POST">
+        <button type="submit">Generate Admin Key</button>
+    </form>
+    {% if key %}
+    <h2>Generated Key:</h2>
+    <p>{{ key }}</p>
+    {% endif %}
+</body>
+</html>

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, create_engine
@@ -18,7 +18,7 @@ import secrets
 secure_key1 = secrets.token_hex(32)  # Generates a 64-character hexadecimal string
 print("Generated Secure Key1:", secure_key1)
 hashed_key1 = generate_password_hash(secure_key1)
-print("Hashed Key:", hashed_key1)
+print("Hashed Key1:", hashed_key1)
 
 
 secure_key2 = secrets.token_hex(32)  # Generates a 64-character hexadecimal string
@@ -28,7 +28,7 @@ print("Generated Secure Key2:", secure_key2)
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = secure_key2  # Required for session management
+app.secret_key = os.getenv('SECURE_KEY')  # Required for session management
 
 # Database configuration for NeonDB
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")  # Use the NeonDB connection string
@@ -66,6 +66,15 @@ class Attendee(db.Model):
     invite_code = db.Column(db.String(36), unique=True, nullable=False)
     qr_code_generated = db.Column(db.Boolean, default=False)
 
+class regkey(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    hashed_key = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(50), nullable=False)
+    used = db.Column(db.Boolean, default=False)
+
+def is_admin():
+    return session.get('role') == 'admin'
+
 # Routes
 @app.route('/')
 def index():
@@ -73,8 +82,10 @@ def index():
 
 @app.route('/login', methods=['POST', 'GET'])
 def login():
-    if username in session:
+    
+    if 'username' in session:
         return redirect('dashboard')
+        
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
@@ -98,13 +109,41 @@ def dashboard():
 
     role = session['role']
     if role == 'admin':
-        return redirect('events')
-        #return render_template('admin.html')
+        return redirect(url_for('list_events'))
     elif role == 'active':
-        return render_template('active.html')
+        return redirect(url_for('active_dashboard'))  # Redirect to the new active dashboard
     else:
         return "Unauthorized", 403
+    
 
+@app.route('/active_dashboard')
+def active_dashboard():
+    if 'username' not in session or session['role'] != 'active':
+        return "Unauthorized", 403
+
+    # Fetch all events
+    events = Event.query.all()
+
+    # Fetch attendees invited by the current active user
+    active_name = session['username']
+    invited_attendees = Attendee.query.filter_by(active_name=active_name).all()
+
+    # Organize attendees by event
+    event_attendees = {}
+    for attendee in invited_attendees:
+        if attendee.event_id not in event_attendees:
+            event_attendees[attendee.event_id] = {
+                'event_name': Event.query.get(attendee.event_id).name,  # Fetch event name
+                'attendees': []
+            }
+        event_attendees[attendee.event_id]['attendees'].append(attendee)
+
+    return render_template(
+        'active.html',
+        events=events,
+        event_attendees=event_attendees,
+        active_name=active_name
+    )
 
 @app.route('/logout')
 def logout():
@@ -182,7 +221,8 @@ def invite_attendees(event_id):
         return "Event not found", 404
 
     if request.method == 'POST':
-        active_name = request.form['active_name']
+        #active_name = request.form['active_name']
+        active_name = session['username']
         first_names = request.form.getlist('first_name')
         last_names = request.form.getlist('last_name')
 
@@ -204,7 +244,10 @@ def invite_attendees(event_id):
             db.session.add(new_attendee)
 
         db.session.commit()
-        return redirect(url_for('event_management', event_id=event_id))
+        if session['role']=='admin':
+            return redirect(url_for('event_management', event_id=event_id))
+        else:
+            return redirect(url_for('active_dashboard'))
 
     return render_template('invite_attendees.html', event_id=event_id)
 
@@ -344,7 +387,7 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        admin_key = request.form['admin_key']
+        registration_key = request.form.get('registration_key', '')
         role = request.form['role']
 
         if not username or not password:
@@ -362,13 +405,30 @@ def register():
         if User.query.filter_by(username=username).first():
             return "Username already exists", 400
 
-        #pre hashed/saved, input
-        if not check_password_hash(hashed_key1, admin_key):
-            return "Incorrect key", 400
-        
+        if role == 'admin':
+            reg_key = regkey.query.get(1)  # Assuming you have a single admin key with id=1
+            if not reg_key or not check_password_hash(reg_key.hashed_key, registration_key) or reg_key.role != 'admin':
+                return "Incorrect or old key", 400
+
+            # Update the used attribute to True
+            reg_key.used = True
+            db.session.commit()
+        elif role == 'active':
+            # Check if the registration key is valid
+            # need to use check_password_hash not generate hash :(
+            reg_key = regkey.query.filter_by(role='active', used=False).all()
+            for x in reg_key:
+                if check_password_hash(x.hashed_key, registration_key):
+                    x.used = True
+                    db.session.commit()
+                    valid_active_key = True
+            #reg_key = regkey.query.filter_by(hashed_key=generate_password_hash(registration_key), role='active', used=False).first()
+            if not valid_active_key:
+                return "Invalid or used registration key", 400
+
         new_user = User(
             username=username,
-            password=(generate_password_hash(password)),
+            password=generate_password_hash(password),
             role=role
         )
         db.session.add(new_user)
@@ -381,7 +441,68 @@ def register():
 
     return render_template('register.html')
 
+
+# Route for admins to generate keys
+@app.route('/admin/generate_keys', methods=['GET', 'POST'])
+def generate_keys():
+    if not is_admin():
+        return "Unauthorized", 403
+
+    if request.method == 'POST':
+        num_keys = int(request.form.get('num_keys', 0))
+        if num_keys <= 0:
+            flash("Invalid number of keys", "error")
+            return redirect(url_for('generate_keys'))
+
+        plaintext_keys = []  # Store plaintext keys temporarily
+        for _ in range(num_keys):
+            # Generate a random key
+            key = secrets.token_urlsafe(16)  # Generates a 16-character secure random string
+            plaintext_keys.append(key)
+
+            # Hash and store the key in the database
+            hashed_key = generate_password_hash(key)
+            new_key = regkey(
+                hashed_key=hashed_key,
+                role='active',
+                used=False
+            )
+            db.session.add(new_key)
+        db.session.commit()
+
+        # Pass the plaintext keys to the template for display
+        return render_template('generate_keys.html', plaintext_keys=plaintext_keys)
+
+    return render_template('generate_keys.html', plaintext_keys=None)
+
+@app.route('/admin/view_keys')
+def view_keys():
+    if not is_admin():
+        return "Unauthorized", 403
+
+    # Fetch all unused active keys
+    active_keys = regkey.query.filter_by(role='active', used=False).all()
+    return render_template('view_keys.html', keys=active_keys)
+
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
+        admin_key_from_env = os.getenv('ADMIN_KEY')
+        if admin_key_from_env:
+            reg_key = regkey.query.get(1)
+            if not reg_key:
+                new_key = regkey(
+                    id=1,
+                    hashed_key=generate_password_hash(admin_key_from_env),
+                    role='admin',
+                    used=False,
+                )
+                db.session.add(new_key)
+                db.session.commit()
+            else:
+                # Update the existing key (if needed)
+                reg_key.hashed_key = generate_password_hash(admin_key_from_env)
+                db.session.commit()
+
     app.run(debug=False)
