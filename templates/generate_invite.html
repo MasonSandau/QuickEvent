@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Generate Invitation Link</h1>
+  <form method="POST" action="{{ url_for('generate_invite') }}">
+    <button type="submit" class="btn btn-primary">Generate Invite Link</button>
+  </form>
+
+  {% if invite_link %}
+    <div class="mt-4">
+      <h3>Invitation Link:</h3>
+      <div class="input-group">
+        <input type="text" class="form-control" value="{{ invite_link }}" id="inviteLink" readonly>
+        <div class="input-group-append">
+          <button class="btn btn-outline-secondary" type="button" onclick="copyInviteLink()">Copy</button>
+        </div>
+      </div>
+      <small class="text-muted">Share this link with users to join your organization.</small>
+    </div>
+  {% endif %}
+
+  <script>
+    function copyInviteLink() {
+      const copyText = document.getElementById("inviteLink");
+      copyText.select();
+      document.execCommand("copy");
+      alert("Copied to clipboard: " + copyText.value);
+    }
+  </script>
+{% endblock %}

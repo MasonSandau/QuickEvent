@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='logo_cutout_new.ico') }}">
+
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4">
+        <h1 class="text-2xl font-bold mb-6">Dashboard</h1>
+
+        <!-- Display Current Organization -->
+        <div class="mb-8">
+            <h2 class="text-xl font-bold mb-4">Your Organization</h2>
+            {% if organization %}
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="font-bold">{{ organization.name }}</h3>
+                    <p class="text-sm text-gray-500">ID: {{ organization.id }}</p>
+                </div>
+            {% else %}
+                <p class="text-gray-500">You are not part of an organization yet.</p>
+            {% endif %}
+        </div>
+
+        <!-- Display Events -->
+        <div class="mb-8">
+            <h2 class="text-xl font-bold mb-4">Events</h2>
+            {% if events %}
+                <ul class="space-y-2">
+                    {% for event in events %}
+                        <li class="bg-white p-4 rounded-lg shadow">
+                            <h3 class="font-bold">{{ event.name }}</h3>
+                            <p class="text-sm text-gray-500">Date: {{ event.date }} | Theme: {{ event.theme }}</p>
+                            <a href="/event_management/{{ event.id }}" class="text-blue-500 hover:text-blue-700">Manage Event</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-gray-500">No events found.</p>
+            {% endif %}
+        </div>
+
+        <!-- Display Invitations (for Organizers) -->
+        {% if session['role'] == 'organizer' and organization %}
+            <div>
+                <h2 class="text-xl font-bold mb-4">Invitations</h2>
+                <button id="generate-invitation" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Generate Invitation</button>
+                <div id="invitation-link" class="mt-4 hidden">
+                    <p class="text-sm text-gray-500">Invitation Link:</p>
+                    <p id="link" class="font-mono bg-gray-200 p-2 rounded"></p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // Generate Invitation Link
+        document.getElementById('generate-invitation').addEventListener('click', async () => {
+            const response = await fetch('/generate_invitation', { method: 'POST' });
+            const data = await response.json();
+
+            const invitationLink = document.getElementById('link');
+            invitationLink.textContent = data.invitation_link;
+
+            const invitationDiv = document.getElementById('invitation-link');
+            invitationDiv.classList.remove('hidden');
+        });
+    </script>
+</body>
+</html>

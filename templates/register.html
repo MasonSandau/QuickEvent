@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='logo_cutout_new.ico') }}">
+
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100 flex items-center justify-center h-screen">
@@ -19,19 +21,38 @@
                 <input type="password" name="password" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
             </div>
             <div class="mb-4">
-                <label class="block text-gray-700">Registration Key</label>
-                <input type="text" name="registration_key" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-            </div>
-            <div class="mb-6">
                 <label class="block text-gray-700">Role</label>
-                <select name="role" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                    <option value="admin">Admin</option>
+                <select name="role" id="role" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                     <option value="active">Active</option>
+                    <option value="organizer">Organizer</option>
+                    <option value="admin">Admin</option>
                 </select>
             </div>
+            <!-- Organization Name Field (Conditional) -->
+            <div id="organization-field" class="mb-4 hidden">
+                <label class="block text-gray-700">Organization Name</label>
+                <input type="text" name="organization_name" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <p class="text-sm text-gray-500 mt-1">Enter the name of your organization.</p>
+            </div>
+            <!-- Hidden Field for Organization ID (from invitation link) -->
+            {% if org_id %}
+                <input type="hidden" name="org_id" value="{{ org_id }}">
+            {% endif %}
             <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600">Register</button>
         </form>
         <p class="mt-4 text-center">Already have an account? <a href="/" class="text-blue-500">Login</a></p>
     </div>
+
+    <script>
+        // Show/hide organization name field based on role selection
+        document.getElementById('role').addEventListener('change', function() {
+            const organizationField = document.getElementById('organization-field');
+            if (this.value === 'organizer') {
+                organizationField.classList.remove('hidden');
+            } else {
+                organizationField.classList.add('hidden');
+            }
+        });
+    </script>
 </body>
 </html>

@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invite Attendees</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='logo_cutout_new.ico') }}">
+
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
@@ -12,10 +14,6 @@
         <div class="bg-white p-6 rounded-lg shadow-lg">
             <form action="/invite_attendees/{{ event_id }}" method="POST">
                 <input type="hidden" name="event_id" value="{{ event_id }}">
-                <div class="mb-4">
-                    <label class="block text-gray-700">Active Name</label>
-                    <input type="text" name="active_name" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                </div>
                 <div class="mb-4">
                     <label class="block text-gray-700">Attendee Names</label>
                     <div id="attendeeFields">
@@ -27,17 +25,34 @@
                         </div>
                     </div>
                     <button type="button" class="mt-2 bg-blue-500 text-white py-1 px-3 rounded-lg hover:bg-blue-600" onclick="addAttendeeField()">Add Another</button>
+                    <p id="maxMessage" class="text-red-500 mt-2 hidden">Maximum number of attendees reached.</p>
                 </div>
                 <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600">Invite Attendees</button>
             </form>
         </div>
         <div class="mt-6">
-            <a href="/events" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Back to Events</a>
+            <a href="/dashboard" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Back</a>
         </div>
     </div>
+
+    <!-- Pass the max_attendees value to JavaScript -->
+    <script>
+        //sad error :(
+        const maxAttendees = {{ max_attendees }};
+    </script>
+
+    <!-- Main JavaScript -->
     <script>
         function addAttendeeField() {
             const container = document.getElementById('attendeeFields');
+            const currentFields = container.querySelectorAll('.mb-4').length;
+
+            if (currentFields >= maxAttendees) {
+                // Show the maximum attendees message
+                document.getElementById('maxMessage').classList.remove('hidden');
+                return; // Stop adding new fields
+            }
+
             const newField = document.createElement('div');
             newField.classList.add('mb-4');
             newField.innerHTML = `
@@ -45,8 +60,26 @@
                 <input type="text" name="first_name" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                 <label class="block text-gray-700 mt-2">Last Name</label>
                 <input type="text" name="last_name" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                <button type="button" class="mt-2 bg-red-500 text-white py-1 px-3 rounded-lg hover:bg-red-600" onclick="removeAttendeeField(this)">Remove</button>
             `;
             container.appendChild(newField);
+
+            // Hide the message if it was previously shown
+            if (currentFields + 1 < maxAttendees) {
+                document.getElementById('maxMessage').classList.add('hidden');
+            }
+        }
+
+        function removeAttendeeField(button) {
+            const field = button.closest('.mb-4');
+            field.remove();
+
+            // Hide the maximum attendees message if fields are below the limit
+            const container = document.getElementById('attendeeFields');
+            const currentFields = container.querySelectorAll('.mb-4').length;
+            if (currentFields < maxAttendees) {
+                document.getElementById('maxMessage').classList.add('hidden');
+            }
         }
     </script>
 </body>

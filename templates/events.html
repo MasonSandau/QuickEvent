@@ -4,25 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Events</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='logo_cutout_new.ico') }}">
+
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto p-4">
+        <!-- Display user role and username -->
         <p>Role: {{ session['role'] }} | Username: {{ session['username'] }}</p>
-
 
         <h1 class="text-2xl font-bold mb-6">Existing Events</h1>
 
-        <a href="/create_event" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Create event</a>
+        <!-- Show "Create Event" button only for admins and organizers -->
+        {% if session['role'] in ['admin', 'organizer'] %}
+            <a href="/create_event" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Create Event</a>
+        {% endif %}
 
+        <!-- Show "View Register Keys" button only for admins -->
+        {% if session['role'] == 'admin' %}
+            <a href="/admin/view_keys" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">View Register Keys</a>
+        {% endif %}
 
-        <div class="bg-white p-6 rounded-lg shadow-lg">
+        <!-- Events Table -->
+        <div class="bg-white p-6 rounded-lg shadow-lg mt-4">
             <table class="w-full">
                 <thead>
                     <tr>
                         <th class="text-left py-2">Event Name</th>
                         <th class="text-left py-2">Event Date</th>
                         <th class="text-left py-2">Theme</th>
+                        <th class="text-left py-2">Organization</th>
                         <th class="text-left py-2">Actions</th>
                     </tr>
                 </thead>
@@ -33,6 +44,13 @@
                         <td class="py-2">{{ event.date }}</td>
                         <td class="py-2">{{ event.theme }}</td>
                         <td class="py-2">
+                            {% if event.organization %}
+                                {{ event.organization.name }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                        <td class="py-2">
                             <a href="/event_management/{{ event.id }}" class="text-blue-500 hover:text-blue-700">Manage Event</a>
                         </td>
                     </tr>
@@ -40,6 +58,8 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Back to Dashboard Button -->
         <div class="mt-6">
             <a href="/dashboard" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Back to Dashboard</a>
         </div>
