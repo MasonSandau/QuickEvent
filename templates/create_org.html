@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Organization</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='logo_cutout_new.ico') }}">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4">
+        <h1 class="text-2xl font-bold mb-6">Create Organization</h1>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="bg-{{ 'green' if category == 'success' else 'red' }}-500 text-white p-4 rounded-lg mb-4">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Create Organization Form -->
+        <form method="POST" class="bg-white p-6 rounded-lg shadow">
+            <div class="mb-4">
+                <label for="org_name" class="block text-sm font-medium text-gray-700">Organization Name</label>
+                <input type="text" id="org_name" name="org_name" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg" required>
+            </div>
+
+            <div class="mb-4">
+                <label for="org_description" class="block text-sm font-medium text-gray-700">Description (Optional)</label>
+                <textarea id="org_description" name="org_description" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg"></textarea>
+            </div>
+
+            <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Create Organization</button>
+        </form>
+
+        <!-- Back to Dashboard -->
+        <div class="mt-6">
+            <a href="{{ url_for('dashboard') }}" class="text-blue-500 hover:text-blue-700">Back to Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

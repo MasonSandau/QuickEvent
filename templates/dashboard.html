@@ -5,35 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="shortcut icon" href="{{ url_for('static', filename='logo_cutout_new.ico') }}">
-
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto p-4">
         <h1 class="text-2xl font-bold mb-6">Dashboard</h1>
-
-        <!-- Display Current Organization -->
+        <!-- Create org link :) -->
         <div class="mb-8">
-            <h2 class="text-xl font-bold mb-4">Your Organization</h2>
-            {% if organization %}
-                <div class="bg-white p-4 rounded-lg shadow">
-                    <h3 class="font-bold">{{ organization.name }}</h3>
-                    <p class="text-sm text-gray-500">ID: {{ organization.id }}</p>
+            <h2 class="text-xl font-bold mb-4">Create New Organization</h2>
+            <a href="{{ url_for('create_org') }}" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Create Organization</a>
+        </div>
+        <!-- Display All Organizations -->
+        <div class="mb-8">
+            <h2 class="text-xl font-bold mb-4">Your Organizations</h2>
+            {% if organizations %}
+                <div class="space-y-4">
+                    {% for org in organizations %}
+                        <div class="bg-white p-4 rounded-lg shadow">
+                            <h3 class="font-bold">{{ org.name }}</h3>
+                            <p class="text-sm text-gray-500">ID: {{ org.id }}</p>
+                        </div>
+                    {% endfor %}
                 </div>
             {% else %}
-                <p class="text-gray-500">You are not part of an organization yet.</p>
+                <p class="text-gray-500">You are not part of any organizations yet.</p>
             {% endif %}
         </div>
 
-        <!-- Display Events -->
+        <!-- Display Events for All Organizations -->
         <div class="mb-8">
             <h2 class="text-xl font-bold mb-4">Events</h2>
+            <a href="/events" class="text-blue-500 hover:text-blue-700">Manage/create events</a>
+
             {% if events %}
                 <ul class="space-y-2">
                     {% for event in events %}
                         <li class="bg-white p-4 rounded-lg shadow">
                             <h3 class="font-bold">{{ event.name }}</h3>
                             <p class="text-sm text-gray-500">Date: {{ event.date }} | Theme: {{ event.theme }}</p>
+                            <p class="text-sm text-gray-500">Organization: {{ event.organization.name }}</p>
                             <a href="/event_management/{{ event.id }}" class="text-blue-500 hover:text-blue-700">Manage Event</a>
                         </li>
                     {% endfor %}
@@ -44,27 +54,51 @@
         </div>
 
         <!-- Display Invitations (for Organizers) -->
-        {% if session['role'] == 'organizer' and organization %}
+        {% if session['role'] == 'organizer' and organizations %}
             <div>
                 <h2 class="text-xl font-bold mb-4">Invitations</h2>
-                <button id="generate-invitation" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Generate Invitation</button>
+                <form id="generate-invitation-form" class="mb-4">
+                    <label for="org_id" class="block text-sm font-medium text-gray-700">Select Organization</label>
+                    <select id="org_id" name="org_id" class="mt-1 block w-full p-2 border border-gray-300 rounded-lg">
+                        {% for org in organizations %}
+                            <option value="{{ org.id }}">{{ org.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="mt-4 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Generate Invitation</button>
+                </form>
                 <div id="invitation-link" class="mt-4 hidden">
                     <p class="text-sm text-gray-500">Invitation Link:</p>
                     <p id="link" class="font-mono bg-gray-200 p-2 rounded"></p>
                 </div>
             </div>
         {% endif %}
+        
     </div>
 
     <script>
         // Generate Invitation Link
-        document.getElementById('generate-invitation').addEventListener('click', async () => {
-            const response = await fetch('/generate_invitation', { method: 'POST' });
+        document.getElementById('generate-invitation-form').addEventListener('submit', async (e) => {
+            e.preventDefault(); // Prevent the form from submitting the traditional way
+    
+            const orgId = document.getElementById('org_id').value; // Get the selected organization ID
+    
+            // Send a POST request to the server
+            const response = await fetch('/generate_invitation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `org_id=${orgId}`, // Send the organization ID in the request body
+            });
+    
+            // Parse the JSON response
             const data = await response.json();
-
+    
+            // Display the invitation link
             const invitationLink = document.getElementById('link');
             invitationLink.textContent = data.invitation_link;
-
+    
+            // Show the invitation link container
             const invitationDiv = document.getElementById('invitation-link');
             invitationDiv.classList.remove('hidden');
         });

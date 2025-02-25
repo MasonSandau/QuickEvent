@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Management: {{ event.event_name }}</title>
+    <title>Event Management: {{ event.name }}</title>
     <link rel="shortcut icon" href="{{ url_for('static', filename='logo_cutout_new.ico') }}">
 
     <!-- Bootstrap CSS -->
@@ -36,11 +36,12 @@
     <div class="container">
         <!-- Event Header -->
         <div class="event-header text-center">
-            <h1>{{ event.event_name }}</h1>
+            <h1>{{ event.name }}</h1>
             <p class="lead">{{ event.theme }}</p>
-            <p><strong>Date:</strong> {{ event.event_date }}</p>
+            <p><strong>Date:</strong> {{ event.date }}</p>
             <p><strong>Max Capacity:</strong> {{ event.max_capacity }}</p>
             <p><strong>Names per Active:</strong> {{ event.names_per_active }}</p>
+            <p><strong>Organization:</strong> {{ event.organization.name }}</p>
             <p><strong>Attendees:</strong> {{ num_attendees }}</p>
         </div>
 
@@ -57,14 +58,14 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for attendee in event.attendees %}
+                    {% for attendee in attendees %}
                     <tr>
                         <td>{{ attendee.active_name }}</td>
                         <td>{{ attendee.first_name }}</td>
                         <td>{{ attendee.last_name }}</td>
                         <td>
-                            <a href="{{ request.host_url }}attendee_form/{{event_id}}/{{ attendee.id }}" class="btn btn-link">
-                                Invite link | {{attendee.id}}
+                            <a href="{{ request.host_url }}attendee_form/{{ event.id }}/{{ attendee.id }}" class="btn btn-link">
+                                Invite link | {{ attendee.id }}
                             </a>
                         </td>
                     </tr>
@@ -85,7 +86,7 @@
 
         <!-- Back to Events Button -->
         <div class="text-center mt-4">
-            <a href="{{ url_for('list_events') }}" class="btn btn-secondary">Back to Events</a>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Back to dashboard</a>
         </div>
     </div>
 

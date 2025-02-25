@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Active Dashboard</title>
     <link rel="shortcut icon" href="{{ url_for('static', filename='logo_cutout_new.ico') }}">
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
@@ -28,6 +27,7 @@
                             <p><strong>Theme:</strong> {{ event.theme }}</p>
                             <p><strong>Max Capacity:</strong> {{ event.max_capacity }}</p>
                             <p><strong>Names Per Active:</strong> {{ event.names_per_active }}</p>
+                            <p><strong>Organization:</strong> {{ event.organization.name }}</p>
                             <a href="{{ url_for('invite_attendees', event_id=event.id) }}" class="btn btn-primary">
                                 Invite People to {{ event.name }}
                             </a>
