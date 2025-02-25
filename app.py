@@ -23,13 +23,13 @@ import time
 
 
 secure_key1 = secrets.token_hex(32) 
-print("Generated Secure Key1:", secure_key1)
+#print("Generated Secure Key1:", secure_key1)
 hashed_key1 = generate_password_hash(secure_key1)
-print("Hashed Key1:", hashed_key1)
+#print("Hashed Key1:", hashed_key1)
 
 
 secure_key2 = secrets.token_hex(32)  
-print("Generated Secure Key2:", secure_key2)
+#print("Generated Secure Key2:", secure_key2)
 
 
 load_dotenv()
@@ -59,13 +59,21 @@ class Organization(db.Model):
     description = db.Column(db.Text, nullable=True)
 
 
+# Define the association table for the many-to-many relationship between users and organizations
+# Also needs to pre define before the User model.
+user_organization = db.Table('user_organization',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('organization_id', db.String(36), db.ForeignKey('organization.id'), primary_key=True)
+)
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), nullable=False)
-    organization_id = db.Column(db.String(36), db.ForeignKey('organization.id'), nullable=True)
-    organization = db.relationship('Organization', backref='users')
+    organizations = db.relationship('Organization', secondary=user_organization, backref=db.backref('users', lazy='dynamic'))
+
+
 
 class Event(db.Model):
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -130,13 +138,13 @@ def login():
         if user and check_password_hash(user.password, password):
             session['username'] = user.username
             session['role'] = user.role
-            session['organization_id'] = user.organization_id
+            session['organization_ids'] = [org.id for org in user.organizations]
             return redirect(url_for('dashboard'))
         else:
             return "Invalid credentials", 401
     else:
         return render_template('login.html')
-
+    
 
 @app.route('/dashboard')
 def dashboard():
@@ -147,22 +155,32 @@ def dashboard():
     if not user:
         return "User not found", 404
 
-    organization = None
+    # Fetch all organizations the user is part of
+    organizations = user.organizations
     events = []
     invitations = []
 
-    if user.organization_id:
-        organization = Organization.query.get(user.organization_id)
-        events = Event.query.filter_by(organization_id=organization.id).all()
+    # Fetch events for all organizations the user is part of
+    for organization in organizations:
+        org_events = Event.query.filter_by(organization_id=organization.id).all()
+        events.extend(org_events)
 
-    if user.role == ('organizer' or 'admin') and organization:
-        invitations = Invitation.query.filter_by(org_id=organization.id, used=False).all()
-        return render_template('dashboard.html', organization=organization, events=events, invitations=invitations)
+    # Handle organizers
+    if user.role == 'organizer':
+        if organizations:
+            # Fetch invitations for all organizations the user is part of
+            invitations = Invitation.query.filter(
+                Invitation.org_id.in_([org.id for org in organizations]),
+                Invitation.used == False
+            ).all()
+        return render_template('dashboard.html', organizations=organizations, events=events, invitations=invitations)
 
-    if user.role=='active':
+    # Handle active users
+    if user.role == 'active':
         return redirect(url_for('active_dashboard'))
-    
-    return 'Erorr displaying pages...', 404
+
+    # Handle other roles or errors
+    return 'Error displaying pages...', 404
 
 
 
@@ -171,16 +189,17 @@ def active_dashboard():
     if 'username' not in session or session['role'] != 'active':
         return "Unauthorized", 403
 
-    # Fetch all events for the organization
-    organization_id = session.get('organization_id')
-    print(organization_id)
-    #events = Event.query.filter_by(organization_id=organization_id).all()
-    #It has the same code on server vs local why doesn't it wont to display... :(
-    try:
-        events = Event.query.filter_by(organization_id=organization_id).all()
-        print(f"Events fetched: {events}")
-    except Exception as e:
-        print(f"Error fetching events: {e}")
+    user = User.query.filter_by(username=session['username']).first()
+    if not user:
+        return "User not found", 404
+
+    # Fetch all events for the organizations the user is part of
+    organizations = user.organizations
+    events = []
+    for organization in organizations:
+        org_events = Event.query.filter_by(organization_id=organization.id).all()
+        events.extend(org_events)
+
     # Fetch attendees invited by the current active user
     active_name = session['username']
     invited_attendees = Attendee.query.filter_by(active_name=active_name).all()
@@ -194,11 +213,6 @@ def active_dashboard():
                 'attendees': []
             }
         event_attendees[attendee.event_id]['attendees'].append(attendee)
-
-    print(f"Organization ID: {organization_id}")
-    print(f"Events: {events}")
-    print(f"Session: {session}")
-
 
     return render_template(
         'active.html',
@@ -215,18 +229,31 @@ def logout():
     session.pop('organization_id', None)
     return redirect(url_for('index'))
 
-@app.route('/create_event', methods=['POST', 'GET'])
+@app.route('/create_event', methods=['GET', 'POST'])
 def create_event():
     if 'username' not in session or session['role'] not in ['admin', 'organizer']:
         return "Unauthorized", 403
 
-    if request.method == 'POST': 
+    if request.method == 'POST':
+        # Get form data
         event_name = request.form['event_name']
         event_date = request.form['event_date']
         theme = request.form['theme']
         max_capacity = int(request.form['max_capacity'])
         names_per_active = int(request.form['names_per_active'])
+        organization_id = request.form['organization_id']
 
+        # Validate the organization
+        organization = Organization.query.get(organization_id)
+        if not organization:
+            return "Invalid organization", 400
+
+        # Check if the user is part of the selected organization
+        user = User.query.filter_by(username=session['username']).first()
+        if organization not in user.organizations:
+            return "Unauthorized to create events for this organization", 403
+
+        # Create the event
         event_id = str(uuid.uuid4())
         new_event = Event(
             id=event_id,
@@ -235,15 +262,20 @@ def create_event():
             theme=theme,
             max_capacity=max_capacity,
             names_per_active=names_per_active,
-            organization_id=session.get('organization_id')
+            organization_id=organization_id
         )
-
         db.session.add(new_event)
         db.session.commit()
 
+        flash('Event created successfully!', 'success')
         return redirect(url_for('list_events'))
     else:
-        return render_template('admin.html')
+        # Fetch the current user's organizations
+        user = User.query.filter_by(username=session['username']).first()
+        organizations = user.organizations
+        return render_template('admin.html', organizations=organizations)
+    
+
 
 @app.route('/events')
 def list_events():
@@ -257,21 +289,33 @@ def list_events():
 
     return render_template('events.html', events=events, session=session)
 
+#fixed for multiple user orgs :)
 @app.route('/event_management/<event_id>')
 def event_management(event_id):
     if 'username' not in session or session['role'] not in ['admin', 'organizer']:
         return "Unauthorized", 403
 
+    # Fetch the event
     event = Event.query.get(event_id)
     if not event:
         return "Event not found", 404
 
-    if session['role'] == 'organizer' and event.organization_id != session.get('organization_id'):
-        return "Unauthorized", 403
+    # Fetch the current user
+    user = User.query.filter_by(username=session['username']).first()
+    if not user:
+        return "User not found", 404
 
+    # Check if the user is authorized to manage the event
+    if session['role'] == 'organizer':
+        # Check if the event's organization is in the user's organizations
+        if event.organization not in user.organizations:
+            return "Unauthorized", 403
+
+    # Fetch attendees for the event
     attendees = Attendee.query.filter_by(event_id=event_id).all()
     num_attendees = len(attendees)
 
+    # Generate the active link for inviting attendees
     active_link = f"{request.host_url}invite_attendees/{event_id}"
 
     return render_template(
@@ -509,14 +553,14 @@ def register():
                 username=username,
                 password=generate_password_hash(password),
                 role=role,
-                organization_id=organization.id
             )
+            new_user.organizations.append(organization)
             db.session.add(new_user)
             db.session.commit()
 
             session['username'] = username
             session['role'] = role
-            session['organization_id'] = organization.id
+            session['organization_ids'] = [organization.id]
 
             return redirect(url_for('dashboard'))
 
@@ -526,14 +570,17 @@ def register():
                 username=username,
                 password=generate_password_hash(password),
                 role=role,
-                organization_id=organization_id  # Optional: If joining via invitation link
             )
+            if organization_id:
+                organization = Organization.query.get(organization_id)
+                if organization:
+                    new_user.organizations.append(organization)
             db.session.add(new_user)
             db.session.commit()
 
             session['username'] = username
             session['role'] = role
-            session['organization_id'] = organization_id  # Optional: If joining via invitation link
+            session['organization_ids'] = [organization.id] if organization_id else []
 
             return redirect(url_for('dashboard'))
 
@@ -646,12 +693,23 @@ def generate_invitation():
     if 'username' not in session or session['role'] != 'organizer':
         return "Unauthorized", 403
 
+    # Get the organization ID from the form data
+    org_id = request.form.get('org_id')
+    if not org_id:
+        return "Organization ID is required", 400
+
+    # Fetch the current user
     user = User.query.filter_by(username=session['username']).first()
-    if not user or not user.organization_id:
-        return "Organizer not found or not part of an organization", 404
+    if not user:
+        return "User not found", 404
+
+    # Check if the user is part of the specified organization
+    organization = Organization.query.get(org_id)
+    if not organization or organization not in user.organizations:
+        return "Unauthorized or organization not found", 403
 
     # Generate a new invitation code
-    new_invitation = Invitation(org_id=user.organization_id)
+    new_invitation = Invitation(org_id=org_id)
     db.session.add(new_invitation)
     db.session.commit()
 
@@ -671,19 +729,60 @@ def join_org():
         if not invitation:
             return "Invalid or used invitation code", 400
 
-        # Update the user's organization
+        # Update the user's organizations
         user = User.query.filter_by(username=session['username']).first()
         if not user:
             return "User not found", 404
 
-        user.organization_id = invitation.org_id
-        invitation.used = True
-        db.session.commit()
+        organization = Organization.query.get(invitation.org_id)
+        if organization:
+            user.organizations.append(organization)
+            invitation.used = True
+            db.session.commit()
 
-        session['organization_id'] = invitation.org_id
+            if 'organization_ids' not in session:
+                session['organization_ids'] = []
+            session['organization_ids'].append(organization.id)
+
         return redirect(url_for('dashboard'))
 
     return render_template('join_org.html')
+
+
+#create org of orgonizers :)
+@app.route('/create_org', methods=['GET', 'POST'])
+def create_org():
+    if 'username' not in session or session['role'] != 'organizer':
+        return "Unauthorized", 403
+
+    if request.method == 'POST':
+        org_name = request.form['org_name']
+        org_description = request.form.get('org_description', '')
+
+        # Check if the organization name is unique
+        existing_org = Organization.query.filter_by(name=org_name).first()
+        if existing_org:
+            flash('An organization with this name already exists.', 'error')
+            return redirect(url_for('create_org'))
+
+        # Create a new organization
+        new_org = Organization(
+            id=str(uuid.uuid4()),
+            name=org_name,
+            description=org_description
+        )
+        db.session.add(new_org)
+        db.session.commit()
+
+        # Add the current user to the new organization
+        user = User.query.filter_by(username=session['username']).first()
+        user.organizations.append(new_org)
+        db.session.commit()
+
+        flash('Organization created successfully!', 'success')
+        return redirect(url_for('dashboard'))
+
+    return render_template('create_org.html')
 
 if __name__ == "__main__":
     with app.app_context():

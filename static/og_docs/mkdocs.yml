@@ -1,0 +1,31 @@
+site_name: Event Management System Docs
+site_url: http://localhost:5000/docs/  
+use_directory_urls: false             
+nav:
+  - Home: index.md
+  - Database Models:
+    - Users: database_models/users.md
+    - Events: database_models/events.md
+    - Attendees: database_models/attendees.md
+    - Registration Keys: database_models/regkeys.md
+  - API Endpoints:
+    - User Endpoints: api_endpoints/user_endpoints.md
+    - Event Endpoints: api_endpoints/event_endpoints.md
+    - Attendee Endpoints: api_endpoints/attendee_endpoints.md
+    - Admin Endpoints: api_endpoints/admin_endpoints.md
+  - Authentication:
+    - Login: authentication/login.md
+    - Register: authentication/register.md
+    - Logout: authentication/logout.md
+  - Utilities:
+    - QR Codes: utilities/qr_codes.md
+    - Server Health: utilities/server_health.md
+    - Admin Keys: utilities/admin_keys.md
+  - Templates:
+    - Index: templates/index.md
+    - Dashboard: templates/dashboard.md
+    - Active Dashboard: templates/active_dashboard.md
+    - Event Management: templates/event_management.md
+    - QR Scanner: templates/qr_scanner.md
+theme:
+  name: material
